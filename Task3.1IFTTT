@@ -1,0 +1,75 @@
+ConnectWithWPA.ino =
+
+#include <BH1750.h>
+#include <Wire.h>
+#include <WiFiNINA.h> // Include the WiFiNINA library
+#include "arduino_secrets.h" // Include your WiFi credentials
+//Ehsen Tahir
+BH1750 lightMeter;
+
+char ssid[] = SECRET_SSID; // Replace SECRET_SSID and SECRET_PASS with your WiFi credentials
+char pass[] = SECRET_PASS;
+WiFiClient client;
+
+char HOST_NAME[] = "maker.ifttt.com";
+String PATH_NAME_SUNLIGHT_STARTED = "/trigger/sunlight_started/with/key/c6W__V1XhMrXa9eBHvhFvc"; // Replace your_key with your IFTTT webhook key
+String PATH_NAME_SUNLIGHT_STOPPED = "/trigger/sunlight_stopped/with/key/c6W__V1XhMrXa9eBHvhFvc"; // Replace your_key with your IFTTT webhook key
+
+bool sunlightStarted = false; // Flag to track if sunlight started
+
+void setup() {
+  Serial.begin(9600);
+  delay(1000); // Delay to let the Serial monitor settle
+
+  // Initialize the BH1750 sensor
+  Wire.begin();
+  lightMeter.begin();
+
+  // Initialize the WiFi connection
+  connectWiFi();
+}
+
+void loop() {
+  float lux = lightMeter.readLightLevel(); // Read light level from the sensor
+
+  if (lux >= 35.00 && !sunlightStarted) {
+    sendIFTTTNotification(PATH_NAME_SUNLIGHT_STARTED); // Sunlight started, trigger IFTTT notification
+    sunlightStarted = true; // Update flag to indicate sunlight started
+  } else if (lux < 35.00 && sunlightStarted) {
+    sendIFTTTNotification(PATH_NAME_SUNLIGHT_STOPPED); // Sunlight stopped, trigger IFTTT notification
+    sunlightStarted = false; // Update flag to indicate sunlight stopped
+  }
+
+  delay(10000); // Delay for 10 seconds before taking the next reading
+}
+
+void connectWiFi() {
+  Serial.print("Attempting to connect to WiFi");
+  while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+    // Wait for WiFi connection
+    delay(1000);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to WiFi");
+}
+
+void sendIFTTTNotification(String path) {
+  if (client.connect(HOST_NAME, 80)) {
+    // Connected to the server
+    Serial.println("Connected to server");
+    client.println("GET " + path + " HTTP/1.1");
+    client.println("Host: " + String(HOST_NAME));
+    client.println("Connection: close");
+    client.println(); // End HTTP header
+    Serial.println("Notification sent");
+  } else {
+    // Failed to connect to the server
+    Serial.println("Connection to server failed");
+  }
+}
+
+arduino_secret.h =
+
+#define SECRET_SSID "OPTUS_648B"
+#define SECRET_PASS "reefsskyer57421"
+
